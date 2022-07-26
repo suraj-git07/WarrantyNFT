@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/utils/Counters.sol"; // uisng counters to take a
 contract Warranty is ERC721URIStorage{
 
     address Shop_owner;
-    uint private validTill;
+    
     
     using Counters for Counters.Counter;
     Counters.Counter private tokenId; 
     
     // here ERC721 constructor({collection_name} ,{collection_symbol}) call first then our contract's constructor
-    constructor(uint _validTill) ERC721("WarrantyNFT","WNFT"){
+    constructor() ERC721("WarrantyNFT","WNFT"){
         Shop_owner = msg.sender;
-        validTill=_validTill;
+        
     }
 
     // modifier that only owner can call that particular func
@@ -27,46 +27,61 @@ contract Warranty is ERC721URIStorage{
 
     // warranty issued to specific address fro a specific serial number item
     mapping(address=>mapping(uint=>bool)) public warrantyIssuedTo;
-
-
-    function  warrantyIssue(address _to, uint _serialID) external OwnerOnly {
-        warrantyIssuedTo[_to][_serialID] = true;
-    }
-
-    // mapping(address=>string[]) public personToNFTs; // anyone can see specific's address items when claimed
+    
     mapping(uint=>address) public tokenIdToPerson; // who one a specific token id
 
-    function claimWarranty(string memory _tokenURI,uint _item) public returns(uint){
-        require(warrantyIssuedTo[msg.sender][_item] == true,"NO warranty is issued to you for that item");
+    mapping(uint=>bool) public isValid; // any nft of specific id is valid or not
 
+    mapping(uint=>uint) public validTill; // any nft of specific id is valid till
+
+
+    // owner can issue the nft  to a user for a specific product and return that issued id
+    function  warrantyIssue(address _to, uint _serialID) external OwnerOnly returns(uint) {
+        require(warrantyIssuedTo[_to][_serialID] != true,"warranrt is issued already" );
+        warrantyIssuedTo[_to][_serialID] = true;
         tokenId.increment(); //now not zero
-        uint  newItemId = tokenId.current();
-        _mint(msg.sender,newItemId); // address , tokenId
-        _setTokenURI(newItemId,_tokenURI);
+        return tokenId.current();
+    }
 
+    // set the validity and and validtill( in sec) for any token Id;
+    function validityIssue(uint _tokenId, uint _validTill) external OwnerOnly{
+        require(_tokenId <= tokenId.current(), "id not exists");
+        require(isValid[_tokenId] != true  && validTill[_tokenId] == 0,"already valid");
+         
+        isValid[_tokenId] = true;
+        validTill[_tokenId] = block.timestamp + _validTill;
+    }
+
+    // user can claim his/her nft by adding the tokenID and tokenURI
+    function claimWarranty(uint _tokenId,   string memory _tokenURI,uint _serialID) public returns(bool){
+        require(tokenIdToPerson[_tokenId] == msg.sender,"you are not the owner of this nft" );
+        require(warrantyIssuedTo[msg.sender][_serialID] == true,"NO warranty is issued to you for that item");
+        require(validTill[_tokenId] <= block.timestamp,"validity over");
         
+        
+        _mint(msg.sender,_tokenId); // address , tokenId
+        _setTokenURI(_tokenId,_tokenURI);
 
+        tokenIdToPerson[_tokenId] = msg.sender;
 
+        warrantyIssuedTo[msg.sender][_serialID] = false ;// not mint twice
 
-
-        // personToNFTs[msg.sender].push(_tokenURI) ;
-        tokenIdToPerson[newItemId] = msg.sender;
-
-        warrantyIssuedTo[msg.sender][_item] = false ;// not mint twice
-
-        return newItemId;  // Id of the minted NFT
+        return true;  // Id of the minted NFT
     }
 
-    function burnWarranty(uint _tokenid,uint _serialID, address _ownerOfNft) public returns(bool){
-        require(msg.sender==Shop_owner || msg.sender == tokenIdToPerson[_tokenid]); // only owner or  nftOwner can call this func
+    // function for checking the valid time for any nft 
+    function checkValid(uint _tokenId) public returns(bool){
+         require(_tokenId <= tokenId.current(), "id not exists");
 
-        _burn(_tokenid);
-        warrantyIssuedTo[_ownerOfNft][_serialID] = false;
-      
-
-        return true;
-
+        if(validTill[_tokenId] <= block.timestamp){
+            return true;
+        }
+        else{
+            isValid[_tokenId] = false;
+            return false;
+        }
     }
+
 }
 
 
