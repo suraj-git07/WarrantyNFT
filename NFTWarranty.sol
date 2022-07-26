@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Counters.sol"; // uisng counters to take a
 
 contract Warranty is ERC721URIStorage{
 
-    address Shop_owner;
+    address public Shop_owner;
     
     
     using Counters for Counters.Counter;
@@ -36,17 +36,17 @@ contract Warranty is ERC721URIStorage{
 
 
     // owner can issue the nft  to a user for a specific product and return that issued id
-    function  warrantyIssue(address _to, uint _serialID) external OwnerOnly returns(uint) {
-        require(warrantyIssuedTo[_to][_serialID] != true,"warranrt is issued already" );
+    function  warrantyIssue(address _to, uint _serialID, uint _validTill) external OwnerOnly returns(uint) {
+        require(warrantyIssuedTo[_to][_serialID] != true,"warranty is issued already" );
         warrantyIssuedTo[_to][_serialID] = true;
         tokenId.increment(); //now not zero
-        tokenIdToPerson[tokenId.current()] = _to;
+        tokenIdToPerson[tokenId.current()] = _to; // setting the tokenId mapping
+        validityIssue(tokenId.current(),_validTill); // issuing the validity
         return tokenId.current();
     }
 
     // set the validity and and validtill( in sec) for any token Id;
-    function validityIssue(uint _tokenId, uint _validTill) external OwnerOnly{
-        require(_tokenId <= tokenId.current(), "id not exists");
+    function validityIssue(uint _tokenId, uint _validTill) internal OwnerOnly{
         require(isValid[_tokenId] != true  && validTill[_tokenId] == 0,"already valid");
          
         isValid[_tokenId] = true;
