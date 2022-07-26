@@ -40,6 +40,7 @@ contract Warranty is ERC721URIStorage{
         require(warrantyIssuedTo[_to][_serialID] != true,"warranrt is issued already" );
         warrantyIssuedTo[_to][_serialID] = true;
         tokenId.increment(); //now not zero
+        tokenIdToPerson[tokenId.current()] = _to;
         return tokenId.current();
     }
 
@@ -62,23 +63,24 @@ contract Warranty is ERC721URIStorage{
         _mint(msg.sender,_tokenId); // address , tokenId
         _setTokenURI(_tokenId,_tokenURI);
 
-        tokenIdToPerson[_tokenId] = msg.sender;
 
         warrantyIssuedTo[msg.sender][_serialID] = false ;// not mint twice
 
         return true;  // Id of the minted NFT
     }
 
-    // function for checking the valid time for any nft 
-    function checkValid(uint _tokenId) public returns(bool){
-         require(_tokenId <= tokenId.current(), "id not exists");
+    // function for checking the valid time for all  nfts and this function is called by gelato every specific interval 
+    function checkValid() public {
+         
+        for(uint i = 1; i<=tokenId.current();i++){
 
-        if(validTill[_tokenId] <= block.timestamp){
-            return true;
+        if(validTill[i] >= block.timestamp){
+            
         }
         else{
-            isValid[_tokenId] = false;
-            return false;
+            isValid[i] = false;
+            
+        }
         }
     }
 
